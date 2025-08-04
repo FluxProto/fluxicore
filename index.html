@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FluxCore Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #0a0a0a;
+        color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+    }
+    .hidden { display: none; }
+    #login {
+        margin-top: 20%;
+    }
+    input {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 5px;
+        border: none;
+        outline: none;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        background: #00bcd4;
+        border: none;
+        color: white;
+        cursor: pointer;
+    }
+    button:hover { background: #0097a7; }
+    #dashboard {
+        padding: 20px;
+    }
+    .card {
+        display: inline-block;
+        background: #1a1a1a;
+        padding: 20px;
+        margin: 10px;
+        border-radius: 8px;
+        min-width: 200px;
+    }
+    .card h2 {
+        margin: 0 0 10px;
+        color: #00bcd4;
+    }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login">
+    <h1>Enter Command:</h1>
+    <input type="text" id="command" placeholder="#fluxcore">
+    <button onclick="checkCommand()">Run</button>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="hidden">
+    <h1>FluxCore Savings Dashboard</h1>
+    <div class="card">
+        <h2>Electricity Saved</h2>
+        <p id="kwhSaved">0</p>
+    </div>
+    <div class="card">
+        <h2>CO₂ Avoided</h2>
+        <p id="co2Saved">0</p>
+    </div>
+    <div class="card">
+        <h2>Cost Savings</h2>
+        <p id="costSaved">$0</p>
+    </div>
+    <div class="card">
+        <h2>Uptime Efficiency</h2>
+        <p id="uptimeEff">0%</p>
+    </div>
+
+    <canvas id="savingsChart" width="400" height="200" style="margin-top: 30px;"></canvas>
+</div>
+
+<script>
+let chart;
+let chartData = {
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+    datasets: [
+        {
+            label: 'Electricity Saved (kWh)',
+            data: [0, 2500, 5200, 7900, 10200, 13000, 15420],
+            borderColor: '#00bcd4',
+            backgroundColor: 'rgba(0, 188, 212, 0.2)',
+            fill: true,
+            tension: 0.2
+        },
+        {
+            label: 'CO₂ Avoided (Tons)',
+            data: [0, 1.2, 2.8, 4.0, 5.5, 6.4, 7.2],
+            borderColor: '#8bc34a',
+            backgroundColor: 'rgba(139, 195, 74, 0.2)',
+            fill: true,
+            tension: 0.2
+        }
+    ]
+};
+
+function checkCommand() {
+    let cmd = document.getElementById("command").value.trim().toLowerCase();
+    if (cmd === "#fluxcore") {
+        document.getElementById("login").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+        animateNumbers();
+        drawChart();
+        setInterval(updateChartLive, 4000);
+    } else {
+        alert("Invalid Command. Try '#fluxcore'");
+    }
+}
+
+// Animate number counting
+function animateValue(id, start, end, duration, prefix = "", suffix = "") {
+    let obj = document.getElementById(id);
+    let range = end - start;
+    let stepTime = Math.abs(Math.floor(duration / range));
+    stepTime = Math.max(stepTime, 20); // prevent too fast updates
+    let startTime = new Date().getTime();
+    let timer = setInterval(function() {
+        let now = new Date().getTime();
+        let elapsed = now - startTime;
+        let progress = Math.min(elapsed / duration, 1);
+        let value = Math.floor(start + (range * progress));
+        obj.innerHTML = prefix + value.toLocaleString() + suffix;
+        if (progress === 1) clearInterval(timer);
+    }, stepTime);
+}
+
+function animateNumbers() {
+    animateValue("kwhSaved", 0, 15420, 2000, "", " kWh");
+    animateValue("co2Saved", 0, 7, 2000, "", " Tons");
+    animateValue("costSaved", 0, 1854, 2000, "$");
+    animateValue("uptimeEff", 0, 92, 2000, "", "%");
+}
+
+// Draw chart
+function drawChart() {
+    const ctx = document.getElementById('savingsChart').getContext('2d');
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#f0f0f0' } } },
+            scales: {
+                x: { ticks: { color: '#f0f0f0' } },
+                y: { ticks: { color: '#f0f0f0' } }
+            }
+        }
+    });
+}
+
+// Simulate live updates
+function updateChartLive() {
+    let nextKwh = chartData.datasets[0].data[chartData.datasets[0].data.length - 1] 
+                  + Math.floor(Math.random() * 500 + 200);
+    let nextCo2 = chartData.datasets[1].data[chartData.datasets[1].data.length - 1] 
+                  + (Math.random() * 0.5 + 0.1);
+
+    let nextLabel = "M" + (chartData.labels.length + 1);
+    chartData.labels.push(nextLabel);
+
+    chartData.datasets[0].data.push(nextKwh);
+    chartData.datasets[1].data.push(parseFloat(nextCo2.toFixed(2)));
+
+    if (chartData.labels.length > 12) {
+        chartData.labels.shift();
+        chartData.datasets.forEach(ds => ds.data.shift());
+    }
+
+    chart.update();
+
+    document.getElementById("kwhSaved").innerHTML = nextKwh.toLocaleString() + " kWh";
+    document.getElementById("co2Saved").innerHTML = nextCo2.toFixed(2) + " Tons";
+}
+</script>
+</body>
+</html>
